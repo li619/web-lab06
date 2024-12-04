@@ -1,52 +1,53 @@
 <template>
   <div class="app-container">
-    <h1>我的待办事项</h1>
-    
-    <div class="add-todo">
-      <input 
-        v-model="newTodo"
-        @keyup.enter="addTodo"
-        placeholder="添加新的待办事项..."
-        class="add-input"
-      >
-      <button @click="addTodo" class="add-button">添加</button>
-    </div>
+    <el-container>
+      <el-header>
+        <h1>我的待办事项</h1>
+      </el-header>
+      <el-main>
+        <div class="add-todo">
+          <input 
+            v-model="newTodo"
+            @keyup.enter="addTodo"
+            placeholder="添加新的待办事项..."
+            class="add-input"
+          >
+          <button @click="addTodo" class="add-button">添加</button>
+        </div>
 
-    <div class="filters">
-      <button 
-        v-for="filter in filters" 
-        :key="filter.value"
-        @click="currentFilter = filter.value"
-        :class="{ active: currentFilter === filter.value }"
-        class="filter-btn"
-      >
-        {{ filter.label }}
-      </button>
-    </div>
+        <div class="filters">
+          <button 
+            v-for="filter in filters" 
+            :key="filter.value"
+            @click="currentFilter = filter.value"
+            :class="{ active: currentFilter === filter.value }"
+            class="filter-btn"
+          >
+            {{ filter.label }}
+          </button>
+        </div>
 
-    <div class="todo-list">
-      <TransitionGroup name="list">
-        <ToDoItem
-          v-for="todo in filteredTodos"
-          :key="todo.id"
-          :todo="todo"
-          @remove="removeTodo(todo)"
-          @update="updateTodo"
-        />
-      </TransitionGroup>
-    </div>
+        <div class="todo-list">
+          <TransitionGroup name="list">
+            <ToDoItem
+              v-for="todo in filteredTodos"
+              :key="todo.id"
+              :todo="todo"
+              @remove="removeTodo(todo)"
+              @update="updateTodo"
+            />
+          </TransitionGroup>
+        </div>
 
-    <div class="todo-stats">
-      <span>总计: {{ todos.length }}</span>
-      <span>已完成: {{ completedCount }}</span>
-      <span>未完成: {{ activeCount }}</span>
-    </div>
+        <TodoStats :todos="todos" />
+      </el-main>
+    </el-container>
   </div>
 </template>
 
 <style scoped>
 .app-container {
-  max-width: 600px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -116,14 +117,36 @@
   opacity: 0;
   transform: translateX(30px);
 }
+
+.el-header {
+  padding: 20px;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: relative;
+  z-index: 1;
+}
+
+.el-main {
+  padding: 20px;
+  background: #f5f7fa;
+  margin-top: 20px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 24px;
+  color: #2c3e50;
+}
 </style>
 
 <script>
 import ToDoItem from './components/ToDoItem.vue'
+import TodoStats from './components/TodoStats.vue'
 
 export default {
   components: {
-    ToDoItem
+    ToDoItem,
+    TodoStats
   },
   data() {
     return {
