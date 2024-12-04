@@ -1,200 +1,234 @@
 <template>
-    <div class="stack-small" v-if="!isEditing">
-      <div class="custom-checkbox">
-        <input
-          type="checkbox"
-          class="checkbox"
-          :id="id"
-          :checked="isDone"
-          @change="$emit('checkbox-changed')" />
-        <label :for="id" class="checkbox-label">{{ label }}</label>
-      </div>
-      <div class="btn-group">
-        <button
-          type="button"
-          class="btn"
-          ref="editButton"
-          @click="toggleToItemEditForm">
-          Edit
-          <span class="visually-hidden">{{ label }}</span>
-        </button>
-        <button type="button" class="btn btn__danger" @click="deleteToDo">
-          Delete
-          <span class="visually-hidden">{{ label }}</span>
-        </button>
-      </div>
+  <div class="todo-item" :class="{ completed: todo.completed, important: todo.important }">
+    <div class="todo-content">
+      <input 
+        type="checkbox" 
+        :checked="todo.completed"
+        @change="$emit('update', { ...todo, completed: !todo.completed })"
+        class="todo-checkbox"
+      >
+      <input 
+        v-if="editing"
+        v-model="editText"
+        @blur="finishEdit"
+        @keyup.enter="finishEdit"
+        @keyup.esc="cancelEdit"
+        ref="editInput"
+        class="edit-input"
+      >
+      <span v-else class="todo-text" :class="{ completed: todo.completed }">
+        {{ todo.text }}
+      </span>
     </div>
-    <to-do-item-edit-form
-      v-else
-      :id="id"
-      :label="label"
-      @item-edited="itemEdited"
-      @edit-cancelled="editCancelled"></to-do-item-edit-form>
-  </template>
-  
-  <script>
-  import ToDoItemEditForm from "./ToDoItemEditForm.vue";
-  
-  export default {
-    components: {
-      ToDoItemEditForm,
+    
+    <div class="actions">
+      <!-- 编辑按钮 -->
+      <button 
+        @click="startEdit" 
+        class="btn-edit" 
+        v-if="!editing"
+        data-tooltip="编辑"
+      >
+        ✎
+      </button>
+      <!-- 保存按钮 -->
+      <button @click="finishEdit" class="btn-save" v-else>
+        ✓
+      </button>
+      <!-- 重要标记按钮 -->
+      <button @click="toggleImportant" class="btn-important">
+        <span :class="{ active: todo.important }">★</span>
+      </button>
+      <!-- 删除按钮 -->
+      <button 
+        @click="$emit('remove')" 
+        class="btn-delete"
+        data-tooltip="删除"
+      >
+        ✕
+      </button>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.todo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  margin: 8px 0;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+.todo-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.todo-content {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  margin-right: 10px;
+}
+
+.todo-checkbox {
+  margin-right: 12px;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.todo-text {
+  font-size: 16px;
+  color: #333;
+  flex: 1;
+}
+
+.completed {
+  text-decoration: line-through;
+  color: #888;
+}
+
+.important {
+  border-left: 4px solid #ff4757;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-edit,
+.btn-save,
+.btn-important,
+.btn-delete {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  background: #f8f9fa;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 2px;
+  font-size: 18px;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.btn-edit {
+  color: #3498db;
+}
+
+.btn-edit:hover {
+  background: #e3f2fd;
+}
+
+.btn-save {
+  color: #27ae60;
+}
+
+.btn-important {
+  color: #f1c40f;
+}
+
+.btn-important .active {
+  color: #f1c40f;
+}
+
+.btn-delete {
+  color: #e74c3c;
+}
+
+.btn-delete:hover {
+  background: #ffebee;
+}
+
+.edit-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 2px solid #3498db;
+  border-radius: 4px;
+  font-size: 16px;
+  outline: none;
+}
+
+.edit-input:focus {
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.btn-edit::after,
+.btn-delete::after {
+  position: absolute;
+  content: attr(data-tooltip);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.2s;
+  pointer-events: none;
+}
+
+.btn-edit:hover::after,
+.btn-delete:hover::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>
+
+<script>
+export default {
+  props: {
+    todo: {
+      type: Object,
+      required: true
+    }
+  },
+  data() {
+    return {
+      editing: false,
+      editText: ''
+    }
+  },
+  methods: {
+    startEdit() {
+      this.editing = true
+      this.editText = this.todo.text
+      this.$nextTick(() => {
+        this.$refs.editInput?.focus()
+      })
     },
-    props: {
-      label: { required: true, type: String },
-      done: { default: false, type: Boolean },
-      id: { required: true, type: String },
+    finishEdit() {
+      if (!this.editText.trim()) {
+        this.$emit('remove')
+      } else {
+        this.$emit('update', {
+          ...this.todo,
+          text: this.editText.trim()
+        })
+        this.editing = false
+      }
     },
-    data() {
-      return {
-        isEditing: false,
-      };
+    cancelEdit() {
+      this.editing = false
+      this.editText = this.todo.text
     },
-    computed: {
-      isDone() {
-        return this.done;
-      },
-    },
-    methods: {
-      deleteToDo() {
-        this.$emit("item-deleted");
-      },
-      toggleToItemEditForm() {
-        console.log(this.$refs.editButton);
-        this.isEditing = true;
-      },
-      itemEdited(newLabel) {
-        this.$emit("item-edited", newLabel);
-        this.isEditing = false;
-        this.focusOnEditButton();
-      },
-      editCancelled() {
-        this.isEditing = false;
-        this.focusOnEditButton();
-      },
-      focusOnEditButton() {
-        this.$nextTick(() => {
-          const editButtonRef = this.$refs.editButton;
-          editButtonRef.focus();
-        });
-      },
-    },
-  };
-  </script>
-  
-  <style scoped>
-  .custom-checkbox > .checkbox-label {
-    font-family: Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    font-weight: 400;
-    font-size: 16px;
-    font-size: 1rem;
-    line-height: 1.25;
-    color: #0b0c0c;
-    display: block;
-    margin-bottom: 5px;
-  }
-  .custom-checkbox > .checkbox {
-    font-family: Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    font-weight: 400;
-    font-size: 16px;
-    font-size: 1rem;
-    line-height: 1.25;
-    box-sizing: border-box;
-    width: 100%;
-    height: 40px;
-    height: 2.5rem;
-    margin-top: 0;
-    padding: 5px;
-    border: 2px solid #0b0c0c;
-    border-radius: 0;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-  }
-  .custom-checkbox > input:focus {
-    outline: 3px dashed #fd0;
-    outline-offset: 0;
-    box-shadow: inset 0 0 0 2px;
-  }
-  .custom-checkbox {
-    font-family: Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    font-weight: 400;
-    font-size: 1.6rem;
-    line-height: 1.25;
-    display: block;
-    position: relative;
-    min-height: 40px;
-    margin-bottom: 10px;
-    padding-left: 40px;
-    clear: left;
-  }
-  .custom-checkbox > input[type="checkbox"] {
-    -webkit-font-smoothing: antialiased;
-    cursor: pointer;
-    position: absolute;
-    z-index: 1;
-    top: -2px;
-    left: -2px;
-    width: 44px;
-    height: 44px;
-    margin: 0;
-    opacity: 0;
-  }
-  .custom-checkbox > .checkbox-label {
-    font-size: inherit;
-    font-family: inherit;
-    line-height: inherit;
-    display: inline-block;
-    margin-bottom: 0;
-    padding: 8px 15px 5px;
-    cursor: pointer;
-    touch-action: manipulation;
-  }
-  .custom-checkbox > label::before {
-    content: "";
-    box-sizing: border-box;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 40px;
-    height: 40px;
-    border: 2px solid currentColor;
-    background: transparent;
-  }
-  .custom-checkbox > input[type="checkbox"]:focus + label::before {
-    border-width: 4px;
-    outline: 3px dashed #228bec;
-  }
-  .custom-checkbox > label::after {
-    box-sizing: content-box;
-    content: "";
-    position: absolute;
-    top: 11px;
-    left: 9px;
-    width: 18px;
-    height: 7px;
-    transform: rotate(-45deg);
-    border: solid;
-    border-width: 0 0 5px 5px;
-    border-top-color: transparent;
-    opacity: 0;
-    background: transparent;
-  }
-  .custom-checkbox > input[type="checkbox"]:checked + label::after {
-    opacity: 1;
-  }
-  @media only screen and (min-width: 40rem) {
-    label,
-    input,
-    .custom-checkbox {
-      font-size: 19px;
-      font-size: 1.9rem;
-      line-height: 1.31579;
+    toggleImportant() {
+      this.$emit('update', {
+        ...this.todo,
+        important: !this.todo.important
+      })
     }
   }
-  </style>
+}
+</script>
   
